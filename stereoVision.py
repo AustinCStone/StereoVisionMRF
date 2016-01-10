@@ -14,12 +14,8 @@ def rgb2gray(rgb):
 
 
 def load_images(left_dir, right_dir):
-	left_img = mpimg.imread(left_dir)
-	right_img = mpimg.imread(right_dir)
-	left_img = rgb2gray(left_img)
-	right_img = rgb2gray(right_img)
-	#plt.imshow(left_img, cmap = plt.get_cmap('gray'))
-	#plt.show()
+	left_img = rgb2gray(mpimg.imread(left_dir))
+	right_img = rgb2gray(mpimg.imread(right_dir))
 	return left_img, right_img
 
 
@@ -28,23 +24,21 @@ def produce_disparity_img(left_dir='tsukuba-imL.png', right_dir='tsukuba-imR.png
 	left_img, right_img = load_images(left_dir, right_dir)
 	height, length = left_img.shape
 	disparity_map = np.zeros((height, length, max_disparity))
-
 	for h in range(height):
 		for l in range(length):
 			disparity_map[h, l] = get_cost_by_disparity(left_img, right_img, (h,l), max_disparity, block_size)
-	for row in disparity_map:
-		for l in row:
-			print l
 	message_map = pass_messages(disparity_map, message_passing_rounds)
 	final_disparity_map = get_belief(disparity_map, message_map)
 	plt.imshow(final_disparity_map, cmap = plt.get_cmap('gray'))
 	plt.show()
 
 
+# basically I just guessed on these values. using a truncated linear smoothness penalty
 def get_smoothness_penalty(self_disparity, neighbors_disparity, penalty_constant=.05, cutoff=3.):
 	return penalty_constant * min(abs(self_disparity - neighbors_disparity), cutoff)
 
 
+# there is probably a standard better/clearer way to implement this
 def pass_messages(disparity_map, message_passing_rounds):
 	directions = [RIGHT, LEFT, UP, DOWN]
 	height, length, max_disparity = disparity_map.shape
@@ -55,9 +49,11 @@ def pass_messages(disparity_map, message_passing_rounds):
 			for h in range(height):
 				for l in range(length):
 					neighbor_messages = []
+					# exclude the message from the neighbor we are passing to
 					for i in range(len(directions)):
 						if directions[i] != direction:
 							neighbor_messages.append(message_map[h, l, i])
+					# populate the new message map with the next round's messages
 					try:
 						if direction == RIGHT:
 								next_message_map[h, l+1, directions.index(LEFT)] = \
@@ -134,5 +130,6 @@ def get_cost_by_disparity(left_img, right_img, left_location, max_disparity, blo
 		disparity_cost[disparity] = get_block_pixel_diff(left_img, right_img, left_location, disparity, block_size)
 		disparity += 1
 	return disparity_cost
+
 
 produce_disparity_img()
